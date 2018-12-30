@@ -40,7 +40,7 @@ The state returned by `getState()` comes in the form of a "state tree." It is si
 
 ### Actions
 
-To update the state, the store will accept objects called "actions." Actions define the various ways an application may interact with the state. All action objects must have a `type` property, which will be used to dispatch the action to the correct handler(s). Typically, an action object will contain additional properties which will be used in generating the new state. It is good practice to limit the additional information in the object to the bare minimum needed to accomplish the action. Here are some examples:
+To update the state, the store will accept objects called "actions." Actions define the various ways an application may interact with the state. These are application defined and must follow a specific structure. All action objects must have a `type` property, which will be used to dispatch the action to the correct handler(s). Typically, an action object will contain additional properties which will be used in generating the new state. It is good practice to limit the additional information in the object to the bare minimum needed to accomplish the action. Here are some examples:
 
 ```js
 {
@@ -84,3 +84,25 @@ function addRecipe(recipe) {
 
 Constant definitions like `REMOVE_RECIPE = 'REMOVE_RECIPE'` are useful for a number of reasons. For one, they help document all of the different actions available on the store. Another reason is that typing strings directly is prone to errors. A typo in a string literal will not be caught by the interpreter, but referencing an undefined variable will. 
 
+### Reducers
+
+Once an application has defined its actions, they can be passed to the store through the `dispatch(action)` method. This method will dispatch the action to a reducer. A reducer is a pure function which receives the state and an action, and returns the new state. For that reason, it is said to "reduce" a state and an action into a new state. A pure function must satisfy three criteria:
+
+* Always return the same result given the same arguments
+* Depend solely on the arguments passed to it (i.e. no reliance on outside state)
+* Do not produce side effects such as API requests or I/O operations
+
+Having reducers be pure functions ensures that changes to state are predictable and easy to reason about. A reducer is provided by an application when the store is first created. From there redux will handle calling it with any actions it receives. Here's an example of a simple reducer:
+
+```js
+function recipes(state = [], action) {
+  switch(action.type) {
+    case ADD_RECIPE:
+      return state.concat([action.recipe]);
+    case REMOVE_RECIPE:
+      return state.filter((recipe) => (recipe.id != action.id));
+    default:
+      return state;
+  }
+}
+```
