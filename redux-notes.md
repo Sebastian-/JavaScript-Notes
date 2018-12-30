@@ -1,7 +1,5 @@
 # Redux Notes
 
-## Overview
-
 Redux is a library for managing state within an application. It's comprised of three main components: the state tree, actions, and reducers. Together, these features allow for more predictable and accessible state throughout an application. Redux acts as a single point of reference for state, which simplifies issues with synchronization of data, and facilitates a clear separation between UI and data.
 
 ## Metaphors
