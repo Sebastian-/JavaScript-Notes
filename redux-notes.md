@@ -46,7 +46,7 @@ To update the state, the store will accept objects called "actions." Actions def
 {
   type: 'ADD_RECIPE',
   recipe: {
-    id: 3
+    id: 3,
     name: 'Pancakes',
     ingredients: ['2 Eggs', '500mL Milk', ...],
     steps: ['1. Whisk eggs and milk in a bowl', '2. ...', ...]
@@ -95,7 +95,7 @@ Once an application has defined its actions, they can be passed to the store thr
 Having reducers be pure functions ensures that changes to state are predictable and easy to reason about. A reducer is provided by an application when the store is first created. From there redux will handle calling it with any actions it receives. Here's an example of a simple reducer:
 
 ```js
-function recipes(state = [], action) {
+function recipes(state = [], action) { // the default state = [] assignment handles the case when no state has been initialized yet
   switch(action.type) {
     case ADD_RECIPE:
       return state.concat([action.recipe]);
@@ -105,4 +105,74 @@ function recipes(state = [], action) {
       return state;
   }
 }
+```
+
+## A Simple Implementation of a Redux Store Application
+
+The following is a bare bones implementation of a redux store with the necessary `getState()`, `dispatch(action)`, and `subscribe(listener)` methods:
+
+```js
+function createStore(reducer) { // an application-defined reducer is passed in
+  let state // state tree is referenced here
+  let listeners = [] // array of listeners currently subscribed for updates
+
+  const getState = () => state
+
+  const subscribe = (listener) => {
+    listeners.push(listener)
+    return () => {
+      listeners = listeners.filter((l) => l !== listener)
+    } // subscribe adds the listener, then returns a function which can be called to remove the listener
+  }
+
+  const dispatch = (action) => {
+    state = reducer(state, action) // calls the reducer to get the new state
+    listeners.forEach((listener) => listener()) // since the state has changed, all listeners are called
+  }
+
+  return {
+    getState,
+    subscribe,
+    dispatch
+  }
+}
+```
+
+A simple application making use of the store may look like this:
+
+```js
+// Actions
+const ADD_RECIPE = 'ADD_RECIPE';
+
+// Action Creators
+function addRecipe(recipe) {
+  return {
+    type: ADD_RECIPE,
+    recipe
+  }
+}
+
+// Reducers
+function recipes(state = [], action) {
+  switch(action.type) {
+    case ADD_RECIPE:
+      return state.concat([action.recipe]);
+    default:
+      return state;
+  }
+}
+
+// Interacting with the store
+const store = createStore(recipes);
+
+store.subscribe(() => {
+  console.log('The new state is: ', store.getState())
+});
+
+store.dispatch(addRecipe({
+  id: 3,
+  name: 'Pancakes',
+  ingredients: ['2 Eggs', '500mL Milk'],
+  steps: ['1. Whisk eggs and milk in a bowl', '2. ...']
+}));
 ```
