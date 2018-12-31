@@ -107,6 +107,174 @@ function recipes(state = [], action) { // the default state = [] assignment hand
 }
 ```
 
+#### Combining Reducers
+
+Oftentimes the state of an application is split into a number of different parts. For example, a twitter application may want to maintain information about their users, settings, and tweets. This might look something like this:
+
+```js
+{
+  users: {},
+  settings: {},
+  tweets: {
+    btyxlj: {
+      id: 'btyxlj',
+      text: 'What is a jQuery?',
+      author: {
+        name: 'Joe',
+        id: '@joe',
+        avatar: 'twt.com/joe.png'
+      }  
+    }
+  }
+}
+```
+
+It can become cumbersome and confusing to have one reducer handle all of the actions possible on the different properties of the state tree. Instead, it is useful to define a single reducer for each slice of the state, then combine them into a single reducer which can be passed into redux. For the state tree above, we could have reducers for each of the top level `users` and `settings` properties:
+
+```js
+function users(state = {}, action) {
+  switch (action.type) {
+    case ADD_USER :
+      ...
+    case REMOVE_USER :
+      ...
+    default
+      return state
+  }
+}
+
+function settings(state = {}, action) {
+  switch (action.type) {
+    case CHANGE_SETTING :
+      ...
+    default
+      return state
+  }
+}
+```
+
+These can be combined into something referred to as a "root reducer" which can return the entire state tree while delegating each part to the appropriate reducer:
+
+```js
+function rootReducer(state = {}, action) {
+  return {
+    users: users(state.users, action),
+    settings: settings(state.settings, action)
+  }
+}
+```
+
+Since this pattern is so common with Redux, a dedicated function is provided for combining reducers in this way:
+
+```js
+const rootReducer = Redux.combineReducers({
+  users,  // The function automatically creates a state property for users, and passes the appropriate arguments into the users reducer
+  settings
+})
+```
+
+Lets take a closer look at the tweets property of the state:
+
+```js
+tweets: {
+  btyxlj: {
+    id: 'btyxlj',
+    text: 'What is a jQuery?',
+    author: {
+      name: 'Joe',
+      id: '@joe',
+      avatar: 'twt.com/joe.png'
+    }  
+  }
+}
+```
+
+Because there are multiple levels of properties for tweets, having a single reducer recreate the entire object can quickly get out of hand when making changes to deeply nested properties:
+
+```js
+function tweets(state = {}, action) {
+  switch(action.type) {
+    case ADD_TWEET :
+      return {
+        ...state,
+        [action.tweet.id] : action.tweet
+      } // Since reducers are pure functions we must return a completely new state. Do not alter the existing state directly!
+    case REMOVE_TWEET :
+      ...
+    case UPDATE_AVATAR :
+      return { // So many spread operators @_@
+        ...state,
+        [action.tweet.id]: {
+          ...state[action.tweet.id],
+          author: {
+            ...state[action.tweet.id].author,
+            avatar: action.newAvatar // The only significant change in this whole case
+          }
+        }
+      }
+    default :
+      return state;
+  }
+}
+```
+
+Just as we delegated the top level state properties to their own reducers, it makes sense to do the same for the tweets state. In general, whenever a property refers to another object, it is useful to define a new reducer to handle actions on that object. Taking a look at the tweets property, we can break it down into three reducers:
+
+```js
+// handles actions on the entire tweets object
+function tweets(state = {}, action) {
+  switch(action.type) {
+    case ADD_TWEET :
+      ...
+    case REMOVE_TWEET :
+      ...
+    case EDIT_TWEET :
+      return {
+        ...state,
+        [action.tweetId]: tweet(state[action.tweetId], action)
+      }
+    case UPDATE_AVATAR :
+      return {
+        ...state,
+        [action.tweetId]: tweet(state[action.tweetId], action) // delegate to the tweet reducer
+      }
+    default :
+      state
+  }
+}
+
+// handles actions for individual tweet objects
+function tweet(state = {}, action) {
+  switch (action.type) {
+    case EDIT_TWEET :
+      return {
+        ...state,
+        text: action.text
+      }
+    case UPDATE_AVATAR :
+      return {
+        ...state,
+        author: author(state.author, action) // delegate to the author reducer
+      }
+    default :
+      return state
+  }
+}
+
+// handles actions for author objects
+function author(state = {}, action) {
+  switch (action.type) {
+    case : UPDATE_AVATAR
+      return {
+        ...state,
+        avatar: action.newAvatar
+      }
+    default :
+      state
+  }
+}
+```
+
 ## A Simple Implementation of a Redux Store Application
 
 The following is a bare bones implementation of a redux store with the necessary `getState()`, `dispatch(action)`, and `subscribe(listener)` methods:
