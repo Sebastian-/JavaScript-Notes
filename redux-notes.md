@@ -231,7 +231,7 @@ function tweets(state = {}, action) {
     case EDIT_TWEET :
       return {
         ...state,
-        [action.tweetId]: tweet(state[action.tweetId], action)
+        [action.tweetId]: tweet(state[action.tweetId], action) // delegate to the tweet reducer
       }
     case UPDATE_AVATAR :
       return {
@@ -343,4 +343,39 @@ store.dispatch(addRecipe({
   ingredients: ['2 Eggs', '500mL Milk'],
   steps: ['1. Whisk eggs and milk in a bowl', '2. ...']
 }));
+```
+
+## Middleware
+
+When an action is fired, the default behavior of Redux is to dispatch the action to a reducer, which will then immediately generate the new state. However, there are times when an application may want to do some computation in between the action getting dispatched and the new state being created. Any code that runs between these two points in time is called middleware. Some common middleware tasks are:
+
+* Producing a side effect (e.g., logging information about the store)
+* Processing the action itself (e.g., making an asynchronous HTTP request)
+* Redirecting the action (e.g., to another piece of middleware)
+* Dispatching supplementary actions
+
+The way middleware functions are declared can seem a little strange because of what Redux expects to receive:
+
+```js
+function middleware (store) {
+  return function (next) {
+    return function (action) {
+      // middleware code
+    }
+  }
+}
+```
+
+So a middleware function is a higher-order function (a function which accepts/returns other functions) which is eventually called with the store, the next middleware function (or the dispatch function), and action. In order to ensure control flows through each middleware function to dispatch, make sure each function returns the value of calling `next(action)`. Here's an example of a simple logging middleware:
+
+```js
+const logger = (store) => (next) => (action) => {
+  console.group()
+  console.log('The action is ', action)
+  result = next(action)
+  console.log('The result is ', result)
+  console.groupEnd()
+
+  return result
+}
 ```
