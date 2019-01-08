@@ -379,3 +379,207 @@ const logger = (store) => (next) => (action) => {
   return result
 }
 ```
+
+## Using Redux
+
+Because of the flow Redux imposes on interacting with data, a number of architectural questions must be answered before implementing an application with Redux. How will actions be dispatched? How will the store's state be shared? How will updates to the store be propagated? How should reducers, actions, action creators, and components be organized within an application? The following will present increasingly sophisticated implementations of a todo/goals application using Redux.
+
+### Redux with Javascript and HTML
+
+The UI is fairly straightforward:
+
+```html
+<div>
+  <h1>Todo List</h1>
+  <input id="todo" type="text" placeholder="Add Todo" />
+  <button id="todoBtn">Add Todo</button>
+  <ul id="todos"></ul>
+</div>
+<div>
+    <h1>Goals</h1>
+    <input id="goal" type="text" placeholder="Add Goal" />
+    <button id="goalBtn">Add Todo</button>
+    <ul id="goals"></ul>
+</div>
+```
+
+Redux specific code like actions, reducers, and middleware are defined globally alongside application code:
+
+```js
+// Action Types
+const ADD_TODO = 'ADD_TODO'
+const REMOVE_TODO = 'REMOVE_TODO'
+const TOGGLE_TODO = 'TOGGLE_TODO'
+const ADD_GOAL = 'ADD_GOAL'
+const REMOVE_GOAL = 'REMOVE_GOAL'
+
+// Action creators
+function addTodoAction (todo) {
+  return {
+    type: ADD_TODO,
+    todo,
+  }
+}
+
+function removeTodoAction (id) {
+  return {
+    type: REMOVE_TODO,
+    id,
+  }
+}
+
+function toggleTodoAction (id) {
+  return {
+    type: TOGGLE_TODO,
+    id,
+  }
+}
+
+function addGoalAction (goal) {
+  return {
+    type: ADD_GOAL,
+    goal,
+  }
+}
+
+function removeGoalAction (id) {
+  return {
+    type: REMOVE_GOAL,
+    id,
+  }
+}
+
+// Reducers
+function todos (state = [], action) {
+  switch(action.type) {
+    case ADD_TODO:
+      return state.concat([action.todo])
+    case REMOVE_TODO:
+      return state.filter((todo) => (todo.id !== action.id))
+    case TOGGLE_TODO:
+      return state.map((todo) => todo.id !== action.id ? todo : 
+        Object.assign({}, todo, { complete: !todo.complete }))
+    default:
+      return state
+  }
+}
+
+function goals (state = [], action) {
+  switch(action.type) {
+    case ADD_GOAL:
+      return state.concat([action.goal])
+    case REMOVE_GOAL:
+      return state.filter((goal) => goal.id !== action.id)
+    default:
+      return state
+  }
+}
+
+
+// Middleware
+const logger = (store) => (next) => (action) => {
+  console.group()
+  console.log('The action is ', action)
+  result = next(action)
+  console.log('The result is ', result)
+  console.groupEnd()
+
+  return result
+}
+
+// Instantiating the store
+const store = Redux.createStore(Redux.combineReducers({
+  todos,
+  goals,
+}), Redux.applyMiddleware(logger))
+```
+
+To update the DOM with the state managed by Redux, we can re-render the list of todos/goals each time the state changes:
+
+```js
+store.subscribe(() => {
+  const { goals, todos } = store.getState()
+
+  document.getElementById('todos').innerHTML = ''
+  document.getElementById('goals').innerHTML = ''
+
+  todos.forEach(addTodoToDOM)
+  goals.forEach(addGoalToDOM)
+})
+```
+
+Actions are dispatched by elements which the user will interact with. For instance, the 'Add Todo' button is assigned a click handler which dispatches the add todo action. Similarly, other interactive UI elements are assigned handlers for their respective actions:
+
+```js
+// Configuring Todo/Goal list elements
+function addTodoToDOM (todo) {
+  const node = document.createElement('li')
+  const text = document.createTextNode(todo.name)
+
+  const removeBtn = createRemoveButton(() => {
+    store.dispatch(removeTodoAction(todo.id))
+  })
+
+  if (todo.complete) node.style.textDecoration = 'line-through'
+  node.appendChild(text)
+  node.append(removeBtn)
+  node.addEventListener('click',
+    () => {store.dispatch(toggleTodoAction(todo.id))})
+
+  document.getElementById('todos').appendChild(node)
+}
+
+function addGoalToDOM (goal) {
+  const node = document.createElement('li')
+  const text = document.createTextNode(goal.name)
+  const removeBtn = createRemoveButton(() => {
+    store.dispatch(removeGoalAction(goal.id))
+  })
+
+  node.appendChild(text)
+  node.append(removeBtn)
+
+  document.getElementById('goals').appendChild(node)
+}
+
+document.getElementById('todoBtn')
+  .addEventListener('click', addTodo)
+  
+document.getElementById('goalBtn')
+  .addEventListener('click', addGoal)
+
+function createRemoveButton (onClick) {
+  const removeBtn = document.createElement('button')
+  removeBtn.innerHTML = 'X'
+  removeBtn.addEventListener('click', onClick)
+  return removeBtn
+}
+
+// Handlers
+function addTodo () {
+  const input = document.getElementById('todo')
+  const name = input.value
+  input.value = ''
+
+  store.dispatch(addTodoAction({
+    name,
+    complete: false,
+    id: generateId()
+  }))
+}
+
+function addGoal () {
+  const input = document.getElementById('goal')
+  const name = input.value
+  input.value = ''
+
+  store.dispatch(addGoalAction({
+    name,
+    id: generateId()
+  }))
+}
+```
+
+In this example, integration with Redux was relatively straightforward. By having the store and application share the same scope, actions and state could be dispatched from anywhere in the application. 
+
+TODO: Mention simple structure, Dispatching actions, drawbacks of this structure/possible improvements
