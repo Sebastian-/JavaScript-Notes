@@ -580,6 +580,130 @@ function addGoal () {
 }
 ```
 
-In this example, integration with Redux was relatively straightforward. By having the store and application share the same scope, actions and state could be dispatched from anywhere in the application. 
+In this example, integration with Redux was relatively straightforward. The app is organized as one monolithic file, which greatly simplifies scoping. As a result, interactions with state and actions can be undertaken from anywhere in the application. Action dispatches are handled by click handlers, and the dynamic content is re-rendered entirely for every change in state, which is generally quite inefficient. Overall, this example is a basic demonstration of how Redux can be used in an application, but does not serve as a good example for larger projects. Using React would greatly increase the modularity of our components while improving rendering performance.
 
-TODO: Mention simple structure, Dispatching actions, drawbacks of this structure/possible improvements
+### Redux with React
+
+Implementing the same todo/goals app in React greatly improves modularity, but does require a little more code to manage access to the state. The store is passed along as a prop down the component hierarchy, starting with the main app component. Because the store is not part of any component's state, React will not automatically handle re-rendering on changes to this state (since `setState()` will never be called). As a result, the main app component subscribes a listener to the store which will call `forceUpdate()` to trigger a re-render.
+
+```js
+class App extends React.Component {
+  componentDidMount () {
+    const { store } = this.props
+
+    store.subscribe(() => this.forceUpdate())
+  }
+
+  render() {
+    const { store } = this.props
+    const { todos, goals } = store.getState()
+
+    return (
+      <div>
+        <Todos todos={todos} store={this.props.store}/>
+        <Goals goals={goals} store={this.props.store}/>
+      </div>
+    )
+  }
+}
+
+ReactDOM.render(
+  <App store={store}/>,
+  document.getElementById('app')
+)
+
+class Todos extends React.Component {
+  addItem = (e) => {
+    e.preventDefault()
+    const name = this.input.value
+    this.input.value = ''
+    
+    this.props.store.dispatch(addTodoAction({
+      name,
+      complete: false,
+      id: generateId()
+    }))
+  }
+
+  removeItem = (todo) => {
+    this.props.store.dispatch(removeTodoAction(todo.id))
+  }
+
+  toggleItem = (id) => {
+    this.props.store.dispatch(toggleTodoAction(id))
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>Todo List</h1>
+        <input
+          type='text'
+          placeholder='Add Todo'
+          ref={(input) => this.input = input} 
+          // a ref here is not best practice, but makes sharing the input value quick and easy
+        />
+        <button onClick={this.addItem}>Add Todo</button>
+        <List
+          items={this.props.todos}
+          remove={this.removeItem}
+          toggle={this.toggleItem}
+        />
+      </div>
+    )
+  }
+}
+
+class Goals extends React.Component {
+  addItem = (e) => {
+    e.preventDefault()
+    const name = this.input.value
+    this.input.value = ''
+
+    this.props.store.dispatch(addGoalAction({
+      name,
+      id: generateId()
+    }))
+  }
+
+  removeItem = (goal) => {
+    this.props.store.dispatch(removeGoalAction(goal.id))
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>Goals</h1>
+        <input
+          type='text'
+          placeholder='Add Goal'
+          ref={(input) => this.input = input}
+        />
+
+        <button onClick={this.addItem}>Add Goal</button>
+        <List items={this.props.goals} remove={this.removeItem} />
+      </div>
+    )
+  }
+}
+
+function List (props) {
+  return (
+    <ul>
+      {props.items.map((item) => (
+        <li key={item.id}>
+          <span
+            onClick={() => props.toggle && props.toggle(item.id)}
+            style={{textDecoration: item.complete ? 'line-through' : 'none'}}
+          >
+            {item.name}
+          </span>
+          <button onClick={() => props.remove(item)}>X</button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+```
+
+This iteration of the todos/goals app has divided the monolithic Javascript version into smaller components. To keep things simple, store state is passed along as a prop starting with the root app component, however, in a real world application this data would be fetched asynchronously. Luckily, there exist a few common patterns in Redux which will help to manage asynchronous requests.
