@@ -707,3 +707,139 @@ function List (props) {
 ```
 
 This iteration of the todos/goals app has divided the monolithic Javascript version into smaller components. To keep things simple, store state is passed along as a prop starting with the root app component, however, in a real world application this data would be fetched asynchronously. Luckily, there exist a few common patterns in Redux which will help to manage asynchronous requests.
+
+### Asynchronous Requests using Redux
+
+Typically, a web application will persist its state on a remote server and interact with it as required. While Redux can easily manage client-side state, some extra implementation work is required to make use of server-side state. 
+
+To kick things off, an application will usually fetch some initial set of data to display to the user, like an initial list of todo/goals. It would be inefficient to dispatch an action to add each item individually, so it makes sense to define a load action which will add all the items at once.
+
+```js
+function receiveDataAction (todos, goals) {
+  return {
+    type: RECEIVE_DATA,
+    todos,
+    goals,
+  }
+}
+```
+
+Handling this action in the reducers is relatively straightforward:
+
+```js
+function todos (state = [], action) {
+  switch(action.type) {
+    // ...
+    case RECEIVE_DATA:
+      return action.todos
+    // ...
+  }
+}
+
+function goals (state = [], action) {
+  switch(action.type) {
+    // ...
+    case RECEIVE_DATA:
+      return action.goals
+    // ...
+  }
+}
+```
+
+Now comes the question of where this action should be dispatched. A natural choice is to fetch the data right as the app component is mounted:
+
+```js
+class App extends React.Component {
+  componentDidMount () {
+    const { store } = this.props
+    store.subscribe(() => this.forceUpdate())
+
+    Promise.all([
+      API.fetchGoals(),
+      API.fetchTodos()
+    ]).then(([ goals, todos ]) => {
+      store.dispatch(receiveDataAction(todos, goals))
+    })
+  }
+  
+  // ...
+
+}
+```
+
+This works, but will result in an awkward re-render once the initial data is loaded. A more user-friendly approach would be to display some sort of loading screen while the information is still being gathered. To implement this, a `loading` flag can be added to the store in order to conditionally render some loading UI.
+
+```js
+// Reducer to handle loading state
+function loading (state = true, action) {
+  switch(action.type) {
+    case RECEIVE_DATA:
+      return false
+    default:
+      return state
+  }
+}
+
+// App component conditionally renders based on loading state
+render() {
+  const { store } = this.props
+  const { todos, goals, loading } = store.getState()
+
+  if (loading === true) {
+    return <h3>Loading</h3>
+  }
+
+  return (
+    <div>
+      <Todos todos={todos} store={this.props.store}/>
+      <Goals goals={goals} store={this.props.store}/>
+    </div>
+  )
+}
+```
+
+Now that the application has some initial state, any changes to this state must be transmitted to the server in order to keep them in sync. A simple approach here is to make API calls within components alongside action dispatches. 
+
+```js
+class Todos extends React.Component {
+  addItem = (e) => {
+    e.preventDefault()
+
+    return API.saveTodo(this.input.value)
+      .then((todo) => {
+        this.props.store.dispatch(addTodoAction(todo))
+        this.input.value = ''
+      })
+      .catch(() => {
+        alert('There was an error adding a todo. Try again.')
+      })
+  }
+
+  removeItem = (todo) => {
+    this.props.store.dispatch(removeTodoAction(todo.id))
+    
+    return API.deleteTodo(todo.id)
+      .catch(() => {
+        this.props.store.dispatch(addTodoAction(todo))
+        alert(`An error occurred while removing ${todo.name}. Try again.`)
+      })
+  }
+
+  toggleItem = (id) => {
+    this.props.store.dispatch(toggleTodoAction(id))
+
+    return API.saveTodoToggle(id)
+      .catch(() => {
+        this.props.store.dispatch(toggleTodoAction(id))
+        alert('An error occurred while toggling. Try again.')
+      })
+  }
+
+  // ...
+
+}
+```
+
+Notice how `removeItem` and `toggleItem` dispatch the relevant action before receiving confirmation from the server that the request succeeded. This is known as "Optimistic Updating" because the UI will update under the assumption that the request will succeed. This makes updates from the user's perspective seem instantaneous, despite the fact that the API request will take some time to resolve. If the API request fails, the client-side state can simply be reverted. In the case of `addItem`, making an optimistic update is not trivial because a new todo/goal item will need to have an id assigned to it by the server.
+
+The end goal of a React component is to render some UI based on the state of an application. After all, the `render` method is the only required method for a React component. Managing API calls within components can greatly complicate and obscure this primary purpose, so it would be nice if API calls could be handled somewhere else. 
