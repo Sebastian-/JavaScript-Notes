@@ -708,7 +708,7 @@ function List (props) {
 
 This iteration of the todos/goals app has divided the monolithic Javascript version into smaller components. To keep things simple, store state is passed along as a prop starting with the root app component, however, in a real world application this data would be fetched asynchronously. Luckily, there exist a few common patterns in Redux which will help to manage asynchronous requests.
 
-### Asynchronous Requests using Redux
+### Asynchronous Requests with Redux (Redux Thunk)
 
 Typically, a web application will persist its state on a remote server and interact with it as required. While Redux can easily manage client-side state, some extra implementation work is required to make use of server-side state. 
 
@@ -770,7 +770,7 @@ class App extends React.Component {
 This works, but will result in an awkward re-render once the initial data is loaded. A more user-friendly approach would be to display some sort of loading screen while the information is still being gathered. To implement this, a `loading` flag can be added to the store in order to conditionally render some loading UI.
 
 ```js
-// Reducer to handle loading state
+// Reducer to handle loading state - loading is true until the RECEIVE_DATA action is dispatched
 function loading (state = true, action) {
   switch(action.type) {
     case RECEIVE_DATA:
@@ -840,6 +840,47 @@ class Todos extends React.Component {
 }
 ```
 
-Notice how `removeItem` and `toggleItem` dispatch the relevant action before receiving confirmation from the server that the request succeeded. This is known as "Optimistic Updating" because the UI will update under the assumption that the request will succeed. This makes updates from the user's perspective seem instantaneous, despite the fact that the API request will take some time to resolve. If the API request fails, the client-side state can simply be reverted. In the case of `addItem`, making an optimistic update is not trivial because a new todo/goal item will need to have an id assigned to it by the server.
+Notice how `removeItem` and `toggleItem` dispatch an action before receiving confirmation from the server that the request succeeded. This is known as "Optimistic Updating" because the UI will update under the assumption that the request will succeed. This makes updates from the user's perspective seem instantaneous, despite the fact that the API request will take some time to resolve. If the API request fails, the client-side state can simply be reverted. In the case of `addItem`, making an optimistic update is not trivial because a new todo/goal item will need to have an id assigned to it by the server.
 
-The end goal of a React component is to render some UI based on the state of an application. After all, the `render` method is the only required method for a React component. Managing API calls within components can greatly complicate and obscure this primary purpose, so it would be nice if API calls could be handled somewhere else. 
+The end goal of a React component is to render some UI based on the state of an application. After all, the `render` method is the only required method for a React component. Managing API calls within components can greatly complicate and obscure this primary purpose, so it would be nice if they could be handled somewhere else. Ideally, a component could simply dispatch an action and have all asynchronous work be performed somewhere along the dispatch path. If this work can be delegated to an action creator, then a component can simply dispatch that action as before:
+
+```js
+removeItem = (todo) => {
+  this.props.store.dispatch(handleDeleteTodo(todo))
+}
+```
+
+Action creators are supposed to return action objects. In this case however, the action to be dispatched changes depending on the result of some asynchronous work (`removeTodoAction` is dispatched optimistically, but if the API call fails, the removal must be reverted with an `addTodoAction`). To handle this scenario, a common pattern is to return a function which encapsulates the asynchronous work. Then, some middleware can be responsible for invoking this function before it reaches the reducers/other middleware. This type of middleware is called a "Thunk."
+
+```js
+// Action creator returns a function instead of an action object
+function handleDeleteTodo (todo) {
+  return (dispatch) => {
+    dispatch(removeTodoAction(todo.id))
+
+    return API.deleteTodo(todo.id)
+      .catch(() => {
+        dispatch(addTodoAction(todo))
+        alert(`An error occurred while removing ${todo.name}`)
+    })
+  }
+}
+
+// Thunk middleware
+const thunk = (store) => (next) => (action) => {
+  if (typeof action === 'function') {
+    return action(store.dispatch)
+  }
+
+  return next(action)
+}
+```
+
+Redux will apply middleware in the order it is declared when the store is created. Therefore, it's important to place the thunk middleware first, so that it can intercept any functional actions before they are passed to middleware which cannot handle them. Using functional actions and thunk middleware is a common pattern, so a library called `ReduxThunk` is available for use in applications which need it.
+
+```js
+const store = Redux.createStore(
+  Redux.combineReducers({todos, goals, loading,}), 
+  Redux.applyMiddleware(ReduxThunk.default, checker, logger)
+)
+```
