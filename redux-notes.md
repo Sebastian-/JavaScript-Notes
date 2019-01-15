@@ -366,7 +366,7 @@ function middleware (store) {
 }
 ```
 
-So a middleware function is a higher-order function (a function which accepts/returns other functions) which is eventually called with the store, the next middleware function (or the dispatch function), and action. In order to ensure control flows through each middleware function to dispatch, make sure each function returns the value of calling `next(action)`. Here's an example of a simple logging middleware:
+So a middleware function is a higher-order function (a function which accepts/returns other functions) which eventually receives the store, the next function in the chain on the way to the reducer, and an action. In order to ensure control flows through each middleware function, make sure each function returns the value of calling `next(action)`. Here's an example of a simple logging middleware:
 
 ```js
 const logger = (store) => (next) => (action) => {
