@@ -889,12 +889,12 @@ const store = Redux.createStore(
 
 Since Redux is not specifically tailored for use in React, there are some improvements that can be made to their interface. For one, it would be nice if the store did not have to be passed down as a prop through nested components. Doing so can become very tedious, and some components may not even use the store as it is passed along. Subscribing and unsubscribing can also be repetitive, and needlessly complicates components. React-Redux addresses these issues by providing a simple API to cleanly and easily connect components to the store. A simple implementation of the library is provided below, which matches the API used by the official version.
 
-Passing state down from a root component to a lower level component can become very tedious and inefficient. To address this, React allows for state to be accessed from anywhere in a component tree through its Context API. To make state available, wrap the root of the component hierarchy with `<Context.Provider value={state}>`, passing in any state a prop called value. Then, child components can access the state by rendering from within `<Context.Consumer>`.
+Passing state down from a root component to a lower level component can become very tedious and inefficient. To address this, React allows for state to be accessed from anywhere in a component tree through its Context API. To make state available, wrap the root of the component hierarchy with `<Context.Provider value={state}>`, passing in any state to a prop called value. Then, child components can access the state by rendering from within `<Context.Consumer>`.
 
 ```js
 const Context = React.createContext()
 
-// A simple abstraction for Context.Provider to make passing the store cleaner
+// A simple wrapper for Context.Provider to make passing the store cleaner
 class Provider extends React.Component {
   render () {
     return (
@@ -916,7 +916,7 @@ class ConnectedApp extends React.Component {
   render() {
     return (
       <Context.Consumer>
-        {(store) =>(
+        {(store) => (
           <App store={store} />
         )}
       </Context.Consumer>
@@ -932,14 +932,76 @@ class App extends React.Component {
   }
 
   render() {
+    const { store } = this.props
+    const { loading } = store.getState()
+
+    if (loading === true) {
+      return <h3>Loading</h3>
+    }
+
     // ...
   }
 }
 ```
 
-Notice the separation of concerns between getting the store in `ConnectedApp` and using the store in `App`. This structure is commonly employed, and the component consuming the store is called the "Connected Component" while its child is called the "Presentational Component." Connected components are meant to handle processing related to the store/state, while presentational components are strictly for rendering UI.
+Notice the separation of concerns between getting the store in `ConnectedApp` and using the store in `App`. This structure is commonly employed, and the component managing the store is called the "Connected Component" while its child is called the "Presentational Component." Connected components are meant to handle processing related to the store/state, while presentational components are strictly for rendering UI.
 
-At this point, the `App` component still contains some store logic in the form of `store.subscribe(() => this.forceUpdate())`
+At this point, the `App` component still contains some store logic in the form of `store.subscribe(() => this.forceUpdate())`. In fact, many components interested in store state will contain this invocation. Since it is logic related to the store, it should be handled by a connected component rather than a presentational one. Additionally, connected components tend to share the same structure: they render a presentational component wrapped with `Context.Consumer` and pass in whatever props the presentational component needs. Also, any presentational component interacting with store data will need to be passed the `dispatch` function. All of this repetitive work can be encapsulated in a `connect` function: 
 
-// TODO: notes on connect function (what its meant to accomplish and implementation)
-// TODO: folder structure
+```js
+function connect (mapStateToProps) {
+
+  return (Component) => {
+
+    class Receiver extends React.Component {
+      componentDidMount () {
+        const { subscribe } = this.props.store
+
+        this.unsubscribe = subscribe(() => {
+          this.forceUpdate()
+        })
+      }
+
+      componentWillUnmount () {
+        this.unsubscribe()
+      }
+
+      render () {
+        const { dispatch, getState } = this.props.store
+        const state = getState()
+        const stateNeeded = mapStateToProps(state)
+
+        return <Component {...stateNeeded} dispatch={dispatch} />
+      }
+    }
+
+    class ConnectedComponent extends React.Component {
+      render () {
+        return (
+          <Context.Consumer>
+            {(store) => (
+              <Receiver store={store}/>
+            )}
+          </Context.Consumer>
+        )
+      }
+    }
+
+    return ConnectedComponent
+  }
+}
+
+/* Invoking connect
+    connect(mapStateToProps)(component)
+    - mapStateToProps is a function taking in the store state and returning an 
+      object with the props required to render the component
+    - component is simply the presentational component which will use the props
+      from mapStateToProps
+*/
+const ConnectedApp = connect((state) => ({
+  loading: state.loading
+}))(App)
+```
+
+ With this, the ConnectedApp component has been reduced to a simple function call. The implementation here is simpler than the official react-redux library, but provides a good model for how the library works under the hood.
+ 
