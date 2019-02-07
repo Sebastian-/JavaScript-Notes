@@ -1,5 +1,13 @@
 # JavaScript Notes
 
+## The Development of JavaScript
+
+Javascript was created by Brendan Eich in 1995 over the course of 10 days. Its purpose was to make HTML more interactive and bridge the gap between client-side Java programs and the DOM. 
+
+The language specification is defined by the ECMA organization, hence its official name: ECMAScript. The evolution of Javascript is directed by a group of major software companies. New versions of Javascript are released yearly, and include any new features which have passed the vetting process defined by ECMA.
+
+Due to its origins and initial development, Javascript has come to inherit a number of quirky design choices/features. In the interest of maintaining backwards compatibility, none of the oddities of Javascript have been removed/fixed. Instead, better features are offered as alternatives, and any changes to existing features must be opted into (eg. strict mode). 
+
 ## Syntax
 
 Statements in Javascript should end in `;`. If omitted, the interpreter will usually append them where required. Relying on this behavior is not recommended.
@@ -27,8 +35,8 @@ There are two types of equality:
 Logical operators like && and || do not necessarily evaluate to booleans. `expr1 && expr2` returns expr1 if it can be converted to false; otherwise, returns expr2. `expr1 || expr2` returns expr1 if it can be converted to true; otherwise, returns expr2.
 
 ```js
- true && true;     // t && t returns true
- true && false;    // t && f returns false
+true && true;     // t && t returns true
+true && false;    // t && f returns false
 false && true;     // f && t returns false
 false && (3 == 4); // f && f returns false
 'Cat' && 'Dog';    // t && t returns Dog
