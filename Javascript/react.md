@@ -8,9 +8,7 @@ JSX is a syntax extension for JavaScript which makes declaring and using React e
   const element = <h1>Hello, world!</h1>;
 ```
 
-Inherent to using JSX is the fact that JavaScript logic and markup is combined in a single place. This differs from other approaches, where logic and markup are in separate files. Instead of separating projects into layers/technologies, React encourages separating projects into loosely coupled components which handle everything required to handle a specific concern.
-
-Curly braces in JSX can contain any valid Javascript expression.
+Inherent to using JSX is the fact that JavaScript logic and markup is combined in a single place. This differs from other approaches, where logic and markup are in separate files. Instead of separating projects into layers/technologies, React encourages separating projects into loosely coupled components which do everything required to handle a specific concern. Curly braces in JSX can contain any valid Javascript expression.
 
 ```jsx
 const element = <h1>Hello, {foo}</h1>;
@@ -30,9 +28,7 @@ const title = response.potentiallyMaliciousInput;
 const element = <h1>{title}</h1>;
 ```
 
-It is recommended to wrap multi-line JSX with parentheses to avoid errors due to automatic semicolon insertion.
-
-Like HTML, JSX elements can have attributes. Usually they mirror the same ones available in HTML, except their names are formatted in camelCase, rather than all lower case.
+Like HTML, JSX elements can have attributes. Usually they mirror the same ones available in HTML, except their names are formatted in camelCase, rather than lower case.
 
 ```jsx
 const element = <div tabIndex="0"></div>;
@@ -40,7 +36,7 @@ const element = <div tabIndex="0"></div>;
 const element = <img src={user.avatarUrl}></img>;
 ```
 
-JSX elements may contain child elements. If empty, the closing tag can be omitted by adding a `/` to the opening tag.
+JSX elements may contain child elements. If empty, the closing tag can be omitted by adding a `/` to the opening tag. It is recommended to wrap multi-line JSX with parentheses to avoid errors due to automatic semicolon insertion.
 
 ```jsx
 const element = <img src={user.avatarUrl} />;
@@ -76,4 +72,37 @@ const element = {
     children: 'Hello, world!'
   }
 };
+```
+
+## Rendering Elements
+
+React elements are the smallest building blocks of React apps. They are used to represent the user interface of the app at any given moment. All react elements are rendered as children of a root DOM node. The element to be rendered, alongside this root node, are passed to ReactDOM.render().
+
+```jsx
+// Somewhere in your html
+<div id="root"></div>
+
+// React code
+const element = <h1>Hello, world</h1>;
+ReactDOM.render(element, document.getElementById('root'));
+```
+
+Despite being regular JavaScript objects under the hood, elements are not mutated directly. Instead, a brand new element is created to represent the new state of the app. ReactDOM will compare the differences between the new and current element, and only update the UI where it needs to change. This allows for developers to focus on how the UI should look at a given time, rather than how to transition from one state to another.
+
+```jsx
+// Despite this function calling ReactDOM with a new element each tick, 
+// only the changing time will be updated in the DOM. All other elements
+// will remain unchanged.
+
+function tick() {
+  const element = (
+    <div>
+      <h1>Hello, world!</h1>
+      <h2>It is {new Date().toLocaleTimeString()}.</h2>
+    </div>
+  );
+  ReactDOM.render(element, document.getElementById('root'));
+}
+
+setInterval(tick, 1000);
 ```
