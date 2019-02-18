@@ -91,8 +91,8 @@ Despite being regular JavaScript objects under the hood, elements are not mutate
 
 ```jsx
 // Despite this function calling ReactDOM with a new element each tick, 
-// only the changing time will be updated in the DOM. All other elements
-// will remain unchanged.
+// only the changing time will be updated in the DOM. All other DOM 
+// elements will remain unchanged.
 
 function tick() {
   const element = (
@@ -106,3 +106,33 @@ function tick() {
 
 setInterval(tick, 1000);
 ```
+
+## Components and Props
+
+Components are essentially functions which accept an object of properties, and return some React elements in response. They are meant to define reuseable and independent pieces of an interface. Components can be defined either as functions, or as ES6 classes which implement a `render()` function. Function definitions are generally more efficient and easier to understand, while class definitions have additional API features available to them. Finally, component names should always start with a capital letter! React will assume lower case components are DOM elements and compile their JSX differently (e.g. `<div />` compiles to `React.createElement('div')` while `<Foo />` compiles to `React.createElement(Foo)`).
+
+```jsx
+// Defining components
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+class Welcome extends React.Component {
+  render() {
+    return <h1>Hello, {this.props.name}</h1>;
+  }
+}
+
+// Rendering components
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+const element = <Welcome name="Sara" />;
+ReactDOM.render(
+  element,
+  document.getElementById('root')
+);
+```
+
+Components should be pure functions with respect to their props. This means components passed the same props should return the same elements, and components should not alter their props in any way. Instead, a component can declare and manage state to handle dynamically changing variables.
